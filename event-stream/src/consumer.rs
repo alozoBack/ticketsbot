@@ -1,6 +1,6 @@
 use common::event_forwarding::Event;
 use rdkafka::{
-    consumer::{Consumer as KafkaConsumer, StreamConsumer}, // ← трейту дали alias
+    consumer::{Consumer as KafkaConsumer, StreamConsumer},
     ClientConfig, Message,
 };
 use serde_json;
