@@ -1,6 +1,6 @@
 use common::event_forwarding::Event;
 use rdkafka::{
-    consumer::StreamConsumer,
+    consumer::{Consumer, StreamConsumer},
     ClientConfig, Message,
 };
 use serde_json;
@@ -32,13 +32,16 @@ impl Consumer {
             let msg = self.consumer.recv().await?;
 
             match msg.payload_view::<[u8]>() {
-                Some(Ok(payload)) => {
-                    return serde_json::from_slice(payload).map_err(Into::into);
+                
+                Some(Ok(bytes)) => {
+                    return serde_json::from_slice(bytes).map_err(Into::into);
                 }
+                
                 Some(Err(e)) => {
                     warn!("Error deserializing payload: {:?}", e);
                     continue;
                 }
+                
                 None => {
                     warn!("Received message with no payload. Ignoring.");
                     continue;
