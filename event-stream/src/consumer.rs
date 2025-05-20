@@ -31,7 +31,7 @@ impl Consumer {
         let payload = match msg.payload_view::<[u8]>() {
             Some(Ok(bytes)) => bytes,
             Some(Err(e)) => {
-                warn!("Error deserializing payload: {e}");
+                warn!("Error deserializing payload: {:?}", e);
                 return self.recv().await;
             }
             None => {
