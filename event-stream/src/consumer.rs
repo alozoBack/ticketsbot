@@ -1,8 +1,9 @@
 use common::event_forwarding::Event;
 use rdkafka::{
-    consumer::{Consumer as KafkaConsumer, StreamConsumer},
+    consumer::StreamConsumer,
     ClientConfig, Message,
 };
+use serde_json;
 use tracing::warn;
 use crate::Result;
 
@@ -17,6 +18,7 @@ impl Consumer {
             .set("group.id", &group_id)
             .set("enable.auto.commit", "true")
             .set("session.timeout.ms", "6000")
+            .set("auto.offset.reset", "earliest")
             .set("api.version.request", "true")
             .create()?;
 
@@ -26,20 +28,22 @@ impl Consumer {
     }
 
     pub async fn recv(&self) -> Result<Event> {
-        let msg = self.consumer.recv().await?;
+        loop {
+            let msg = self.consumer.recv().await?;
 
-        let payload = match msg.payload_view::<[u8]>() {
-            Some(Ok(bytes)) => bytes,
-            Some(Err(e)) => {
-                warn!("Error deserializing payload: {:?}", e);
-                return self.recv().await;
+            match msg.payload_view::<[u8]>() {
+                Some(Ok(payload)) => {
+                    return serde_json::from_slice(payload).map_err(Into::into);
+                }
+                Some(Err(e)) => {
+                    warn!("Error deserializing payload: {:?}", e);
+                    continue;
+                }
+                None => {
+                    warn!("Received message with no payload. Ignoring.");
+                    continue;
+                }
             }
-            None => {
-                warn!("Received message with no payload. Ignoring.");
-                return self.recv().await;
-            }
-        };
-
-        serde_json::from_slice(payload).map_err(Into::into)
+        }
     }
 }
